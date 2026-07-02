@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Proxmox PaaS Platform</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .loading { display: none; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 Proxmox PaaS Platform</h1>
+    <p>Deploy applications automatically to Proxmox VMs</p>
+    
+    <form id="deployForm">
+        <div class="form-group">
+            <label for="vm_name">VM Name:</label>
+            <input type="text" id="vm_name" name="vm_name" placeholder="my-app" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="framework">Framework:</label>
+            <select id="framework" name="framework" required>
+                <option value="django">Django (Python)</option>
+                <option value="flask">Flask (Python)</option>
+                <option value="nodejs">Node.js</option>
+                <option value="laravel">Laravel (PHP)</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="git_repo">Git Repository URL:</label>
+            <input type="url" id="git_repo" name="git_repo" 
+                   placeholder="https://github.com/username/repository.git" required>
+        </div>
+        
+        <button type="submit">Deploy Application</button>
+    </form>
+    
+    <div id="loading" class="loading">
+        <p>⏳ Deploying your application... This may take 2-3 minutes.</p>
+    </div>
+    
+    <div id="result" class="result"></div>
+    
+    <script>
+        document.getElementById('deployForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                vm_name: document.getElementById('vm_name').value,
+                framework: document.getElementById('framework').value,
+                git_repo: document.getElementById('git_repo').value
+            };
+            
+            // Show loading, hide result
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            
+            try {
+                const response = await fetch('/deploy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.className = 'result success';
+                    let html = `<h3>${data.message}</h3>`;
+                    
+                    if (data.details) {
+                        html += `<p><strong>VM Name:</strong> ${data.details.vm_name}</p>`;
+                        html += `<p><strong>VM ID:</strong> ${data.details.vm_id}</p>`;
+                        html += `<p><strong>Framework:</strong> ${data.details.framework}</p>`;
+                        html += `<p><strong>Proxmox URL:</strong> <a href="${data.details.proxmox_url}" target="_blank">${data.details.proxmox_url}</a></p>`;
+                        html += `<p><strong>Status:</strong> ${data.details.status}</p>`;
+                    }
+                    
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<p>❌ Error: ${data.error || data.details || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<p>❌ Network Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
